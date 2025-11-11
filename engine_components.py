@@ -32,15 +32,18 @@ T_STD_R = T_STD_K * KELVIN_TO_RANKINE
 
 def setup_gas():
     """Cantera 가스 객체(공기, 연료)를 설정합니다."""
-    # 1. 공기 객체 생성 (air.yaml 사용)
-    air = ct.Solution('air.yaml')
-    # Argon은 사용하지 않고 N2로 근사 (O2/N2만 사용)
+    # 1. 공기 객체 생성 (nDodecane_Reitz.yaml 사용)
+    # nDodecane_Reitz.yaml을 사용할 때 O2/N2 섞은 "공기" 비슷한 phase를 얻으려면,
+    # 'nDodecane_Reitz.yaml' 안의 ideal-gas phase(보통 'air', 'air_IG' 등이 있음)가 있는지 확인하세요.
+    # 일반적으로 따로 정의돼있지 않다면, 가장 가까운 IG(ideal gas) phase를 불러와서 O2/N2로 조성을 세팅하면 됨.
+    air = ct.Solution('nDodecane_Reitz.yaml', 'nDodecane_RK')  # 혹은 'air', 'ideal_gas', 실제 네임 확인 필요
     air.X = {'O2': 0.21, 'N2': 0.79}
-    
+    # 만약 'air_IG' phase가 없으면, 'nDodecane_IG' (연료 phase)는 말고, 
+    # 'nDodecane_Reitz.yaml' 파일을 열어 suitable한 phase 네임을 확인해야 함.
     # 2. 연료 객체 생성 (nDodecane_Reitz.yaml 사용)
     # nDodecane_Reitz.yaml에는 두 개의 phase가 있음: nDodecane_RK, nDodecane_IG
     # ideal-gas phase를 사용
-    fuel = ct.Solution('nDodecane_Reitz.yaml', 'nDodecane_IG')
+    fuel = ct.Solution('nDodecane_Reitz.yaml', 'nDodecane_RK')
     # n-dodecane (C12H26)을 Jet-A 연료의 대체물로 사용합니다.
     # 종 이름은 'c12h26' (소문자)
     fuel.X = {'c12h26': 1.0}
@@ -108,7 +111,7 @@ class Inlet:
         s_amb_jkgK = air.s
         
         # 2. 비행 속도 계산 (V = mn * a)
-        a_amb_mps = air.sound_speed # 음속
+        a_amb_mps = air.sound_speed # 음속 # use sound_speed instead of speed_of_sound
         V_flight_mps = mn * a_amb_mps
         
         # 3. 스테이션 2 (총량 상태) 계산
@@ -437,7 +440,7 @@ class Nozzle:
         # 램 항력 (Fd)
         air, _ = setup_gas()
         air.TP = T_amb_R * RANKINE_TO_KELVIN, P_amb_Pa
-        a_amb_mps = air.sound_speed
+        a_amb_mps = air.sound_speed # use sound_speed instead of speed_of_sound
         V_flight_mps = mn_flight * a_amb_mps
         W_air_kgps = W_air_pps * LBM_TO_KG
         Fd_N = W_air_kgps * V_flight_mps
